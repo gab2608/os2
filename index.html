@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Notifications Reçues</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+  body { font-family: 'Segoe UI', sans-serif; background:#f5f5f5; padding:1em; }
+  .container { max-width:600px; margin:auto; }
+  .notif { background:white; border-radius:10px; padding:1em; margin-bottom:0.5em; box-shadow:0 2px 5px rgba(0,0,0,0.1);}
+  .music { font-style:italic; color:#555;}
+  img { max-width:100%; border-radius:8px; margin-top:0.5em;}
+</style>
+</head>
+<body>
+<div class="container">
+  <h3>Notifications Reçues</h3>
+  <div id="notifications"></div>
+</div>
+
+<script>
+const supabaseUrl = 'https://mymmjduelbpownsqdzgu.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im15bW1qZHVlbGJwb3duc3Fkemd1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIzNjQ4OTcsImV4cCI6MjA3Nzk0MDg5N30.qNPmhC3gwJUb7rziwniPK33fjMEMEdvw-pa0EI1yju8';
+const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+const container = document.getElementById('notifications');
+
+function addNotif(content, music, image) {
+  const div = document.createElement('div');
+  div.className = 'notif';
+  let html = `<div>${content}</div>`;
+  if(music) html += `<div class="music">${music}</div>`;
+  if(image) html += `<img src="${image}" />`;
+  div.innerHTML = html;
+  container.prepend(div);
+}
+
+// Charger les notifications existantes
+async function loadNotif() {
+  const { data } = await supabase.from('notifications').select('*').order('created_at', { ascending:false });
+  data.forEach(n => addNotif(n.content, n.music_title, n.image_url));
+}
+loadNotif();
+
+// Realtime
+supabase.channel('notif_channel')
+  .on('postgres_changes', { event: 'INSERT', schema:'public', table:'notifications' },
+      payload => { if(payload.new.realtime) addNotif(payload.new.content, payload.new.music_title, payload.new.image_url); })
+  .subscribe();
+</script>
+</body>
+</html>
